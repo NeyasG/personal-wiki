@@ -1,4 +1,18 @@
-public
-resources
+# Hugo generated files
+public/
+resources/
 .hugo_build.lock
+
+# User added config - keep if needed
 assets/jsconfig.json
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE specific files (optional)
+# .vscode/
+# .idea/
+
+# Node dependencies (if using npm/yarn for assets)
+# node_modules/
