@@ -1,6 +1,6 @@
 ---
 title: From Pro Gamer to Data Engineer
-description: Welcome to Hugo Theme Stack
+description: A brief introduction
 date: 2025-04-27
 lastmod: 2025-04-27 23:00:00+0000
 image: cover.jpg
