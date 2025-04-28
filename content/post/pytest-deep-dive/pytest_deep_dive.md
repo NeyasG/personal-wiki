@@ -11,6 +11,10 @@ tags:
 draft: true
 ---
 
+## Test hard. Test often
 
+If there is one thing I wish I learned earlier in my programming journey, it would be: 
 
+> **DON'T. SKIP. TESTING.**
 
+Well now I'm slightly older and perhaps slightly wiser, I'm starting to see the benefits of approaching a programming problem from a *testing first* workflow. Today in my work I was building out a metadata system to programmatically gather metadata from external sources (yeah okay... it's Excel 😔) and parse them into a standardised format that could be applied to table comments and table tags within [Unity Catalog](https://www.databricks.com/product/unity-catalog).
