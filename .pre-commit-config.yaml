@@ -1,0 +1,10 @@
+repos:
+-   repo: local
+    hooks:
+    -   id: update-hugo-lastmod
+        name: Update Hugo lastmod timestamp
+        entry: python update_lastmod.py
+        language: system
+        types: [markdown]
+        files: ^content/.*\.md$ # Add this line to restrict paths
+        stages: [commit]

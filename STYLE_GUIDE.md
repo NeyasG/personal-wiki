@@ -35,7 +35,7 @@ Frame posts as entries in a learning log or journal, documenting the journey thr
 
 ## Post Variety
 
-Use Hugo `categories` (e.g., "Tutorial", "Project Update", "Concept Deep Dive") to indicate post type while maintaining the core reflective style.
+Use Hugo `categories` (e.g., "Tutorial", "Project Update", "Deep Dive") to indicate post type while maintaining the core reflective style.
 
 ## Goal Feeling
 

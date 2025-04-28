@@ -1,5 +1,5 @@
 ---
-title: From Pro Gamer to Data Engineer
+title: "From Pro Gamer to Data Engineer"
 description: A brief introduction
 date: 2025-04-27
 lastmod: 2025-04-27 23:00:00+0000
@@ -8,7 +8,6 @@ categories:
     - Project Update
 tags:
     - Meta
-weight: 1       # You can add weight to some posts to override the default sorting (date descending)
 ---
 
 > Welcome to my personal blog! This space serves as my personal wiki and progress tracker as I dive into the world of Data Engineering, and software development. Stay a while and listen!
