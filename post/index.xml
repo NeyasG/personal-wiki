@@ -1,0 +1,422 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on Neyas Guruswamy's Personal Wiki</title><link>https://neyasg.github.io/personal-wiki/post/</link><description>Recent content in Posts on Neyas Guruswamy's Personal Wiki</description><generator>Hugo -- gohugo.io</generator><language>en-us</language><lastBuildDate>Tue, 29 Apr 2025 19:48:44 +0100</lastBuildDate><atom:link href="https://neyasg.github.io/personal-wiki/post/index.xml" rel="self" type="application/rss+xml"/><item><title>Deep Dive into Pytest: Fixtures, Scopes, Parameterization, and Testing Spark Remotely</title><link>https://neyasg.github.io/personal-wiki/p/deep-dive-into-pytest-fixtures-scopes-parameterization-and-testing-spark-remotely/</link><pubDate>Mon, 28 Apr 2025 22:21:04 +0000</pubDate><guid>https://neyasg.github.io/personal-wiki/p/deep-dive-into-pytest-fixtures-scopes-parameterization-and-testing-spark-remotely/</guid><description>&lt;h2 id="-test-hard-test-often">🧪 Test hard. Test often
+&lt;/h2>&lt;p>If there is one thing I wish I learned earlier in my programming journey, it would be:&lt;/p>
+&lt;blockquote>
+&lt;p>&lt;strong>DON&amp;rsquo;T. SKIP. TESTING.&lt;/strong>&lt;/p>&lt;/blockquote>
+&lt;p>Well now I&amp;rsquo;m slightly older and perhaps slightly wiser, I&amp;rsquo;m starting to see the benefits of approaching a programming problem from a &lt;em>testing first&lt;/em> workflow. Today in my work I was building out a metadata system to programmatically gather metadata from external sources (yeah okay&amp;hellip; it&amp;rsquo;s Excel 😔) and parse them into a standardised format that could be applied to table comments and table tags within &lt;a class="link" href="https://www.databricks.com/product/unity-catalog" target="_blank" rel="noopener"
+>Unity Catalog&lt;/a>.&lt;/p>
+&lt;p>In this post I&amp;rsquo;ll be diving into some intermediate pytest concepts that will save a lot of time and boiler plate in your code, and allow for you to rapidly add or tweak test cases on the fly.&lt;/p>
+&lt;p>With some simple examples!&lt;/p>
+&lt;h3 id="testing-is-tiring-if-done-badly">Testing is tiring (if done badly)
+&lt;/h3>&lt;p>If you&amp;rsquo;d have asked me when I first started writing tests what the most annoying part would be, chances are you&amp;rsquo;d get one of these answers:&lt;/p>
+&lt;ul>
+&lt;li>Making the mock data or inputs to the test&lt;/li>
+&lt;li>Manually having to write out many variations of a test case&lt;/li>
+&lt;/ul>
+&lt;h3 id="fixtures">Fixtures
+&lt;/h3>&lt;p>A &lt;a class="link" href="https://linkhttps://docs.pytest.org/en/6.2.x/fixture.html" target="_blank" rel="noopener"
+>Pytest Fixture&lt;/a> is the first important topic to understand. I&amp;rsquo;ll leave the detailed explanation for the docs, but in a nutshell, they allow you to specify functions that provide chunks of code that your test cases can access to perform various repetitive tasks.&lt;/p>
+&lt;p>This helps with a few things:&lt;/p>
+&lt;ol>
+&lt;li>&lt;strong>Providing Data:&lt;/strong> Supplying consistent test data (like mock objects or configurations) to multiple tests.&lt;/li>
+&lt;li>&lt;strong>Managing Resources:&lt;/strong> Setting up resources (like database connections, temporary files, or running services) before a test and ensuring they are cleaned up afterwards, regardless of whether the test passes or fails.&lt;/li>
+&lt;li>&lt;strong>Reducing Boilerplate:&lt;/strong> Avoiding writing the same setup/teardown logic in multiple test functions.&lt;/li>
+&lt;/ol>
+&lt;p>Let&amp;rsquo;s take a look at an example, of a simple multiplication function to start with:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># A Simple function to test&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">a&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">b&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">return&lt;/span> &lt;span class="n">a&lt;/span> &lt;span class="o">*&lt;/span> &lt;span class="n">b&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Creating a basic pytest test would look like this:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># A basic Pytest test&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiply&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">4&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">12&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Now that&amp;rsquo;s great, but let&amp;rsquo;s introduce a more realistic scenario. Imagine our multiply function needs to write to a temporary file for some reason (very common when handling user data).&lt;/p>
+&lt;p>If we wrap a function with a &lt;code>@pytest.fixture&lt;/code> &lt;a class="link" href="https://realpython.com/primer-on-python-decorators/" target="_blank" rel="noopener"
+>decorator&lt;/a> we can use the function to perform operations before &lt;em>each&lt;/em> test:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">os&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">pytest&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># Defining a pytest fixture for opening and closing a file&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nd">@pytest.fixture&lt;/span> &lt;span class="c1"># This decorator declares the function as a pytest fixture&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">temp_output_path&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;Creates a temporary file path and ensures cleanup.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">filepath&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="s1">&amp;#39;temp_multiply_output.txt&amp;#39;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Remove file if it exists already&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">exists&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">remove&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">yield&lt;/span> &lt;span class="n">filepath&lt;/span> &lt;span class="c1"># Provides filepath to the test&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Teardown: Cleaning up the file after the test runs&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">exists&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">remove&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">else&lt;/span>&lt;span class="p">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34; TEARDOWN: temp_output_path (File not found, maybe test failed early?)&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Now, we&amp;rsquo;ve created a pytest fixture that will run before every test. Notice something interesting we are doing. We aren&amp;rsquo;t &lt;code>returning&lt;/code> anything from the function, but rather using the keyword &lt;code>yield&lt;/code>. This is important as return would end the function call and our teardown code would never run. So we&amp;rsquo;d be left with a temporary file path that never gets automatically cleaned up.&lt;/p>
+&lt;p>Using &lt;code>yield&lt;/code> allows us to write teardown logic which will only run after the test completes.&lt;/p>
+&lt;p>Now let&amp;rsquo;s incorporate this into a test:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Test using our fixture ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiplication_with_file_output&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_path&lt;/span>&lt;span class="p">):&lt;/span> &lt;span class="c1"># Fixture is passed in a parameter&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="s2"> Tests multiplication, writes result to a temp file managed by a fixture,
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="s2"> and verifies the file content.
+&lt;/span>&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="s2"> &amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">result&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">4&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># 2. Use the file path from the fixture&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">with&lt;/span> &lt;span class="nb">open&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_path&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;w&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="p">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">f&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">write&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nb">str&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">result&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># 3. Verify the file contents&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">with&lt;/span> &lt;span class="nb">open&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_path&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;r&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="p">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">content&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">read&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="nb">int&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">content&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">12&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Looks great! This keeps our test code much cleaner, and allows us to reuse the fixture across multiple tests which interact with a temporary file.&lt;/p>
+&lt;h3 id="controlling-setupteardown-frequency-with-scopes">Controlling Setup/Teardown Frequency with Scopes
+&lt;/h3>&lt;p>By default, the &lt;code>temp_output_path&lt;/code> fixture we created runs its setup (checking/deleting the old file) and teardown (deleting the new file) for &lt;em>every single test&lt;/em> that uses it. If this setup/teardown were time-consuming (like starting a database service), this would be inefficient.&lt;/p>
+&lt;p>Pytest allows us to control this using the &lt;code>scope&lt;/code> argument in the &lt;code>@pytest.fixture&lt;/code> decorator. Let&amp;rsquo;s change our &lt;code>temp_output_path&lt;/code> fixture to have &lt;code>module&lt;/code> scope. This means it will only set up &lt;em>once&lt;/em> before the first test in the module that needs it runs, and tear down &lt;em>once&lt;/em> after the last test in the module finishes.&lt;/p>
+&lt;p>Let&amp;rsquo;s modify our fixture to create an entire folder, that all our tests can use temporarily:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">pytest&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="kn">import&lt;/span> &lt;span class="nn">os&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nd">@pytest.fixture&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">scope&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="s2">&amp;#34;module&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="c1"># Defining the scope as &amp;#34;module&amp;#34; for the fixture&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">temp_output_dir&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;Creates a temporary directory once per module and ensures cleanup.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">dirpath&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="s2">&amp;#34;temp_module_output_dir&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="se">\n&lt;/span>&lt;span class="s2">SETUP: temp_output_dir (scope: module) - Creating directory: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">makedirs&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">exist_ok&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="kc">True&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">yield&lt;/span> &lt;span class="n">dirpath&lt;/span> &lt;span class="c1"># Provide the directory path to the tests&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Teardown: Clean up the directory after all tests in the module run&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34;TEARDOWN: temp_output_dir (scope: module) - Removing directory: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Be careful with rmtree in real code!&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">exists&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Simple example cleanup: remove files first, then dir&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">for&lt;/span> &lt;span class="n">item&lt;/span> &lt;span class="ow">in&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">listdir&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">item_path&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">join&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">item&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">if&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">isfile&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">item_path&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">remove&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">item_path&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">rmdir&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">dirpath&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="s2">&amp;#34;TEARDOWN: temp_output_dir finished.&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Now our fixture runs &lt;em>once&lt;/em> at the very beginning of our tests. Specifically once per &lt;em>module&lt;/em> (i.e., per &lt;code>.py&lt;/code> file).&lt;/p>
+&lt;p>And our test function will use this folder now:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Test Functions ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiplication_file_output_1&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_dir&lt;/span>&lt;span class="p">):&lt;/span> &lt;span class="c1"># Reminder: Fixture passed as parameter&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;Test using the module-scoped directory.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">result&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">4&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">filepath&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">join&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_dir&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;output.txt&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">with&lt;/span> &lt;span class="nb">open&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;w&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="p">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">f&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">write&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nb">str&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">result&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">with&lt;/span> &lt;span class="nb">open&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;r&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="p">:&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">content&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">read&lt;/span>&lt;span class="p">()&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="nb">int&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">content&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">12&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Pytest offers different scopes to control how often a fixture is set up and torn down:&lt;/p>
+&lt;ul>
+&lt;li>&lt;code>function&lt;/code>: Runs once per test function.&lt;/li>
+&lt;li>&lt;code>class&lt;/code>: Runs once per test class.&lt;/li>
+&lt;li>&lt;code>module&lt;/code>: Runs once per module (i.e., per &lt;code>.py&lt;/code> file).&lt;/li>
+&lt;li>&lt;code>session&lt;/code>: Runs once per test session (i.e., when you run &lt;code>pytest&lt;/code>).&lt;/li>
+&lt;/ul>
+&lt;h3 id="handling-test-variations-cleanly-with-parameterization">Handling Test Variations Cleanly with Parameterization
+&lt;/h3>&lt;p>Okay, now let&amp;rsquo;s tackle the second common pain point mentioned earlier: manually writing out many variations of the same test case. This is where parameterization comes in.&lt;/p>
+&lt;p>Imagine you want to test your multiply function with several different inputs: positive numbers, negative numbers, zero, etc. Without parameterization, you might write separate tests:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt">1
+&lt;/span>&lt;span class="lnt">2
+&lt;/span>&lt;span class="lnt">3
+&lt;/span>&lt;span class="lnt">4
+&lt;/span>&lt;span class="lnt">5
+&lt;/span>&lt;span class="lnt">6
+&lt;/span>&lt;span class="lnt">7
+&lt;/span>&lt;span class="lnt">8
+&lt;/span>&lt;span class="lnt">9
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Repetitive Tests (What we want to avoid) ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiply_positive&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">4&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">12&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiply_negative&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="o">-&lt;/span>&lt;span class="mi">2&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">5&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">10&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_multiply_zero&lt;/span>&lt;span class="p">():&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="mi">6&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">0&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="mi">0&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>This is tedious and violates the &lt;em>DRY&lt;/em> (Don&amp;rsquo;t Repeat Yourself) principle. Pytest&amp;rsquo;s parameterization lets you run the same test function multiple times with different arguments.&lt;/p>
+&lt;p>You use the @pytest.mark.parametrize decorator to achieve this. You provide it with:&lt;/p>
+&lt;ol>
+&lt;li>A string containing the names of the arguments the test function will receive (comma-separated).&lt;/li>
+&lt;li>A list of tuples (or lists), where each tuple represents one set of arguments to pass to the test function for one run.&lt;/li>
+&lt;/ol>
+&lt;p>Let&amp;rsquo;s add a parameterized test to our example file:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Parameterized Test ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nd">@pytest.mark.parametrize&lt;/span>&lt;span class="p">(&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;a, b, expected_product&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="c1"># Argument names for the test function&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">[&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="mi">2&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">5&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">10&lt;/span>&lt;span class="p">),&lt;/span> &lt;span class="c1"># Test case 1: a=2, b=5, expected_product=10&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="o">-&lt;/span>&lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">6&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">18&lt;/span>&lt;span class="p">),&lt;/span> &lt;span class="c1"># Test case 2: a=-3, b=6, expected_product=-18&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="mi">0&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">100&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="mi">0&lt;/span>&lt;span class="p">),&lt;/span> &lt;span class="c1"># Test case 3: a=0, b=100, expected_product=0&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">(&lt;/span>&lt;span class="mi">7&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">7&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">49&lt;/span>&lt;span class="p">),&lt;/span> &lt;span class="c1"># Test case 4: a=7, b=-7, expected_product=-49&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">],&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">ids&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;pos*pos&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;neg*pos&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;zero*pos&amp;#34;&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;pos*neg&amp;#34;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="c1"># Optional: Custom IDs for test runs&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_parametrized_multiplication&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">a&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">b&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">expected_product&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">temp_output_dir&lt;/span>&lt;span class="p">):&lt;/span> &lt;span class="c1"># Pass parameterized arguments&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;Tests multiplication with multiple input sets using parameterization.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Note: We can still use fixtures alongside parameterization!&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34;&lt;/span>&lt;span class="se">\n&lt;/span>&lt;span class="s2"> TEST: test_parametrized_multiplication [&lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">a&lt;/span>&lt;span class="si">=}&lt;/span>&lt;span class="s2">, &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">b&lt;/span>&lt;span class="si">=}&lt;/span>&lt;span class="s2">] (Dir: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">temp_output_dir&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">)&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">result&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">a&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">b&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">result&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="n">expected_product&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Optional: Could also write to a unique file per parameter set in temp_output_dir&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># filepath = os.path.join(temp_output_dir, f&amp;#34;output_param_{a}_{b}.txt&amp;#34;)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># with open(filepath, &amp;#34;w&amp;#34;) as f: f.write(str(result))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;ol>
+&lt;li>&lt;code>@pytest.mark.parametrize(&amp;quot;a, b, expected_product&amp;quot;, ...)&lt;/code> tells &lt;code>pytest&lt;/code> that this test function takes three arguments (&lt;code>a&lt;/code>, &lt;code>b&lt;/code>, &lt;code>expected_product&lt;/code>) that will be parameterized.&lt;/li>
+&lt;li>The list &lt;code>[(2, 5, 10), (-3, 6, -18), ...]&lt;/code> provides the different sets of values for these arguments.&lt;br>
+&lt;code>pytest&lt;/code> will run the &lt;code>test_parametrized_multiplication&lt;/code> function four times, once for each tuple in the list:
+&lt;ul>
+&lt;li>Run 1: &lt;code>a=2&lt;/code>, &lt;code>b=5&lt;/code>, &lt;code>expected_product=10&lt;/code>&lt;/li>
+&lt;li>Run 2: &lt;code>a=-3&lt;/code>, &lt;code>b=6&lt;/code>, &lt;code>expected_product=-18&lt;/code>&lt;/li>
+&lt;li>Run 3: &lt;code>a=0&lt;/code>, &lt;code>b=100&lt;/code>, &lt;code>expected_product=0&lt;/code>&lt;/li>
+&lt;li>Run 4: &lt;code>a=7&lt;/code>, &lt;code>b=-7&lt;/code>, &lt;code>expected_product=-49&lt;/code>&lt;/li>
+&lt;/ul>
+&lt;/li>
+&lt;li>The &lt;code>ids&lt;/code> list provides clearer names for each parameterized run in the &lt;code>pytest&lt;/code> output (e.g., &lt;code>test_parametrized_multiplication[pos*pos]&lt;/code>).&lt;/li>
+&lt;/ol>
+&lt;blockquote>
+&lt;p>Notice that we can still request fixtures (like temp_output_dir) in a parameterized test. The fixture&amp;rsquo;s scope rules still apply (e.g., temp_output_dir is set up only once for the module, even though this test function runs four times).&lt;/p>&lt;/blockquote>
+&lt;p>Parameterization makes it incredibly easy to add new test cases – just add another tuple to the list! This significantly reduces boilerplate code and makes your tests more comprehensive and maintainable.&lt;/p>
+&lt;h3 id="but-wait-theres-more-parameterization">But Wait&amp;hellip; There&amp;rsquo;s MORE (Parameterization)
+&lt;/h3>&lt;p align="center">
+&lt;img src="https://upload.wikimedia.org/wikipedia/commons/4/47/River_terrapin.jpg" alt="turtles all the way down">
+&lt;/p>
+&lt;p align="center">&lt;em>"Turtles all the way down" - It just keeps going.&lt;/em>&lt;/p>
+&lt;p>Sometimes, you want a fixture to provide slightly different setup or data depending on the test. You can achieve this by passing parameters to the fixture when requesting it in the test function and accessing these parameters within the fixture using request.param.&lt;/p>
+&lt;p>Let&amp;rsquo;s create a fixture and parametrize the fixture itself (not the test case) accept a parameter that determines the numbers it yields:&lt;/p>
+&lt;div class="highlight">&lt;div class="chroma">
+&lt;table class="lntable">&lt;tr>&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code>&lt;span class="lnt"> 1
+&lt;/span>&lt;span class="lnt"> 2
+&lt;/span>&lt;span class="lnt"> 3
+&lt;/span>&lt;span class="lnt"> 4
+&lt;/span>&lt;span class="lnt"> 5
+&lt;/span>&lt;span class="lnt"> 6
+&lt;/span>&lt;span class="lnt"> 7
+&lt;/span>&lt;span class="lnt"> 8
+&lt;/span>&lt;span class="lnt"> 9
+&lt;/span>&lt;span class="lnt">10
+&lt;/span>&lt;span class="lnt">11
+&lt;/span>&lt;span class="lnt">12
+&lt;/span>&lt;span class="lnt">13
+&lt;/span>&lt;span class="lnt">14
+&lt;/span>&lt;span class="lnt">15
+&lt;/span>&lt;span class="lnt">16
+&lt;/span>&lt;span class="lnt">17
+&lt;/span>&lt;span class="lnt">18
+&lt;/span>&lt;span class="lnt">19
+&lt;/span>&lt;span class="lnt">20
+&lt;/span>&lt;span class="lnt">21
+&lt;/span>&lt;span class="lnt">22
+&lt;/span>&lt;span class="lnt">23
+&lt;/span>&lt;span class="lnt">24
+&lt;/span>&lt;span class="lnt">25
+&lt;/span>&lt;span class="lnt">26
+&lt;/span>&lt;/code>&lt;/pre>&lt;/td>
+&lt;td class="lntd">
+&lt;pre tabindex="0" class="chroma">&lt;code class="language-python" data-lang="python">&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Parameterizable Fixture ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="nd">@pytest.fixture&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">params&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="p">[&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">{&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="mi">3&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="mi">4&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;id&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="s2">&amp;#34;standard&amp;#34;&lt;/span>&lt;span class="p">},&lt;/span> &lt;span class="c1"># Parameter set 1&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="p">{&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="mi">10&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="mi">2&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;id&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="s2">&amp;#34;large_x&amp;#34;&lt;/span>&lt;span class="p">},&lt;/span> &lt;span class="c1"># Parameter set 2&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">pytest&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">param&lt;/span>&lt;span class="p">({&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">5&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="o">-&lt;/span>&lt;span class="mi">5&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;id&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="s2">&amp;#34;negatives&amp;#34;&lt;/span>&lt;span class="p">},&lt;/span> &lt;span class="n">marks&lt;/span>&lt;span class="o">=&lt;/span>&lt;span class="n">pytest&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">mark&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">skip&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="c1"># Parameter set 3 (skipped)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">parameterized_operands&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">request&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;Provides different pairs of numbers based on fixture parameterization.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">param_data&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">request&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">param&lt;/span> &lt;span class="c1"># Access the current parameter set&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">yield&lt;/span> &lt;span class="p">{&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="n">param_data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="n">param_data&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">]}&lt;/span> &lt;span class="c1"># Yield only the needed data&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Module-scoped fixture (unchanged) ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># ...&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="c1"># --- Test using the parameterized fixture ---&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">&lt;span class="k">def&lt;/span> &lt;span class="nf">test_with_parameterized_fixture&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">parameterized_operands&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="n">temp_output_dir&lt;/span>&lt;span class="p">):&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="s2">&amp;#34;&amp;#34;&amp;#34;This test will run multiple times, once for each fixture parameter.&amp;#34;&amp;#34;&amp;#34;&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">operands&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">parameterized_operands&lt;/span> &lt;span class="c1"># Get the data yielded by the fixture for this run&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="nb">print&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34;TEST: test_with_parameterized_fixture (Operands: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">operands&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">, Dir: &lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">temp_output_dir&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">)&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">result&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">multiply&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">],&lt;/span> &lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">])&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">expected&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;x&amp;#34;&lt;/span>&lt;span class="p">]&lt;/span> &lt;span class="o">*&lt;/span> &lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s2">&amp;#34;y&amp;#34;&lt;/span>&lt;span class="p">]&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">assert&lt;/span> &lt;span class="n">result&lt;/span> &lt;span class="o">==&lt;/span> &lt;span class="n">expected&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl">
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="c1"># Example: Write to a file named after the fixture param ID&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="n">filepath&lt;/span> &lt;span class="o">=&lt;/span> &lt;span class="n">os&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">path&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">join&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">temp_output_dir&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="sa">f&lt;/span>&lt;span class="s2">&amp;#34;output_&lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;x&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">_&lt;/span>&lt;span class="si">{&lt;/span>&lt;span class="n">operands&lt;/span>&lt;span class="p">[&lt;/span>&lt;span class="s1">&amp;#39;y&amp;#39;&lt;/span>&lt;span class="p">]&lt;/span>&lt;span class="si">}&lt;/span>&lt;span class="s2">.txt&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span>
+&lt;/span>&lt;/span>&lt;span class="line">&lt;span class="cl"> &lt;span class="k">with&lt;/span> &lt;span class="nb">open&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">filepath&lt;/span>&lt;span class="p">,&lt;/span> &lt;span class="s2">&amp;#34;w&amp;#34;&lt;/span>&lt;span class="p">)&lt;/span> &lt;span class="k">as&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="p">:&lt;/span> &lt;span class="n">f&lt;/span>&lt;span class="o">.&lt;/span>&lt;span class="n">write&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="nb">str&lt;/span>&lt;span class="p">(&lt;/span>&lt;span class="n">result&lt;/span>&lt;span class="p">))&lt;/span>
+&lt;/span>&lt;/span>&lt;/code>&lt;/pre>&lt;/td>&lt;/tr>&lt;/table>
+&lt;/div>
+&lt;/div>&lt;p>Let&amp;rsquo;s walk through what we just did:&lt;/p>
+&lt;ol>
+&lt;li>We add &lt;code>params=[...]&lt;/code> to the &lt;code>@pytest.fixture&lt;/code> decorator for &lt;code>parameterized_operands&lt;/code>. Each item in the &lt;code>params&lt;/code> list will cause any test requesting this fixture to run once &lt;em>per parameter&lt;/em>.&lt;/li>
+&lt;li>Inside the fixture, &lt;code>request.param&lt;/code> holds the &lt;em>current&lt;/em> parameter value for that specific run (e.g., &lt;code>{&amp;quot;x&amp;quot;: 3, &amp;quot;y&amp;quot;: 4, &amp;quot;id&amp;quot;: &amp;quot;standard&amp;quot;}&lt;/code> on the first run).&lt;/li>
+&lt;li>We use &lt;code>request.param['id']&lt;/code> in the print statements and &lt;code>request.param['x']&lt;/code>, &lt;code>request.param['y']&lt;/code> to yield the correct data.&lt;/li>
+&lt;li>The &lt;code>test_with_parameterized_fixture&lt;/code> function requests &lt;code>parameterized_operands&lt;/code>. Pytest sees the fixture is parameterized and runs the test twice (once for each non-skipped parameter set in the fixture definition). The third parameter set is marked with &lt;code>pytest.mark.skip&lt;/code>.&lt;/li>
+&lt;li>The &lt;code>temp_output_dir&lt;/code> fixture (module scope) is still set up only once.&lt;/li>
+&lt;/ol>
+&lt;h2 id="wrapping-up">Wrapping up
+&lt;/h2>&lt;p>Once I got my head around these concepts, writing tests became much less daunting, and the tests I was writing started to have the speed and agility required for me to actually go and write them (shout-out to all the lazy developers out there).&lt;/p>
+&lt;p>There is a lot more to delve into when it comes to Pytest. The future me will likely write about some more complex topics, like running Pytest both locally and also in Databricks Connect on a cluster in the cloud. And perhaps even,&lt;/p>
+&lt;p>&lt;strong>Is there such a thing as too much Testing&lt;/strong>?&lt;/p>
+&lt;blockquote>
+&lt;p>&lt;em>Hint. Yes there is.&lt;/em>&lt;/p>&lt;/blockquote>
+&lt;p>But this post has already grown too large so&amp;hellip; Thanks for reading!&lt;/p></description></item><item><title>From Pro Gamer to Data Engineer</title><link>https://neyasg.github.io/personal-wiki/p/from-pro-gamer-to-data-engineer/</link><pubDate>Sun, 27 Apr 2025 00:00:00 +0000</pubDate><guid>https://neyasg.github.io/personal-wiki/p/from-pro-gamer-to-data-engineer/</guid><description>&lt;img src="https://neyasg.github.io/personal-wiki/p/from-pro-gamer-to-data-engineer/cover.jpg" alt="Featured image of post From Pro Gamer to Data Engineer" />&lt;blockquote>
+&lt;p>Welcome to my personal blog! This space serves as my personal wiki and progress tracker as I dive into the world of Data Engineering, and software development. Stay a while and listen!&lt;/p>&lt;/blockquote>
+&lt;h3 id="a-little-bit-about-me">A little bit about me
+&lt;/h3>&lt;p>Graduating in Mechanical Engineering from Heriot-Watt University in 2018 may lead some down the path of industry, working their way to a chartered engineering certification and paving the way for a career in companies building bridges, cars, or machines. My journey however started off quite differently, with a stint in the professional video game industry.&lt;/p>
+&lt;p>Playing for an eSports team for a living was quite the unorthodox career, but it taught me a few things which I found useful now I&amp;rsquo;m working in what I would previously call a &amp;ldquo;boring&amp;rdquo; 9-5. The non-stop competitive gauntlet I was immersed in daily solved a lot of what I was lacking in University. Drive. So after &lt;em>retiring&lt;/em> from competitive eSports and stumbling into the world of data engineering by almost chance (A story for another post), I find myself using that drive to tickle the problem solving part of my brain, building data pipelines, untangling strange behaviour and solving data puzzles.&lt;/p>
+&lt;h3 id="whats-in-the-pipeline">What&amp;rsquo;s in the pipeline?
+&lt;/h3>&lt;p>Expect posts covering topics on &lt;a class="link" href="https://www.databricks.com/" target="_blank" rel="noopener"
+>Databricks&lt;/a>, &lt;a class="link" href="https://aws.amazon.com/" target="_blank" rel="noopener"
+>AWS&lt;/a>, &lt;a class="link" href="https://spark.apache.org/" target="_blank" rel="noopener"
+>Apache Spark&lt;/a>, &lt;a class="link" href="https://developer.hashicorp.com/terraform" target="_blank" rel="noopener"
+>Terraform&lt;/a> and any other tools and platforms I encounter as I build up my experience. I&amp;rsquo;ll be documenting my personal projects, challenges and all, the first of which is a simulated music streaming application (think Spotify) ingesting data in real time using Apache Kafka and Spark structured streaming to create a live dashboard.&lt;/p>
+&lt;p>For anyone stumbling on this blog, whether that be fellow Data Engineers and devs, or LinkedIn connections or if I&amp;rsquo;m lucky, potential employers, thank you for reading, and I hope you&amp;rsquo;ve found something useful while here!&lt;/p></description></item></channel></rss>
