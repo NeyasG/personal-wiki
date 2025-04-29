@@ -8,7 +8,7 @@ categories:
     - Testing
 tags:
     - Pytest
-draft: true
+draft: false
 ---
 
 ## 🧪 Test hard. Test often
